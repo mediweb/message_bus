@@ -66,6 +66,15 @@ class MessageBus::Rack::Middleware
   private
 
   def handle_request(env)
+    # MessageBus polling should not have side effects other than handling
+    #   messages. In particular, it should not be sending session cookies, as
+    #   this can clobber session state set by other means.
+    # So we set the :skip Rack session option to true, which prevents the Rack
+    #   session middleware from committing the session cookie to headers.
+    if (rack_session_options = env["rack.session.options"])
+      rack_session_options[:skip] = true
+    end
+
     # special debug/test route
     if @bus.allow_broadcast? && env['PATH_INFO'] == @broadcast_route
       parsed = Rack::Request.new(env)
